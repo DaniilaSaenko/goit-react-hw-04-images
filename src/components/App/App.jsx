@@ -16,11 +16,12 @@ export const App = () => {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalImages, setTotalImages] = useState(null);
-  
+
   useEffect(() => {
     if (search === '') {
       return;
     }
+
     const fetchPosts = async () => {
       setStatus(STATUS.loading);
 
@@ -51,18 +52,19 @@ export const App = () => {
           setTotalImages(data.totalHits);
         }
 
-        if (data.totalHits === posts.length || data.hits.length < paginationLimit) {
+        if (data.hits.length < paginationLimit) {
           throw new Error('You loaded all posts');
         }
       } catch (error) {
         console.log(error);
-        this.setState({ status: STATUS.error });
+        setStatus(STATUS.error);
       }
     };
-        fetchPosts();
+
+    fetchPosts();
   }, [page, search]);
 
-    const handleSubmit = searchValue => {
+  const handleSubmit = searchValue => {
     setSearch(searchValue);
     setPage(1);
     setPosts([]);
@@ -72,14 +74,15 @@ export const App = () => {
     setPage(prevState => prevState + 1);
   };
 
-    return (
-      <Wrapper>
-        <Searchbar onSubmit={handleSubmit} />
+  return (
+    <Wrapper>
+      <Searchbar onSubmit={handleSubmit} />
 
-        {posts.length === 0 && status === STATUS.idle && 
+      {posts.length === 0 && status === STATUS.idle && 
           <Notification>Please Enter search query</Notification>
-        }
-        {posts.length > 0 && (
+      }
+
+      {posts.length > 0 && (
           <>
             <ImageGallery
               posts={posts}
@@ -91,13 +94,10 @@ export const App = () => {
             )}
           </>
         )}
-        
-        {posts.length === 0 && status === STATUS.error && <NotFound />}
 
-        {status === STATUS.loading && <Loader />}
+      {posts.length === 0 && status === STATUS.error && <NotFound />}
 
-        
-      </Wrapper>
-    );
-  }
-
+      {status === STATUS.loading && <Loader />}
+    </Wrapper>
+  );
+};
