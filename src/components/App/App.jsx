@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useEffect, useState } from 'react';
 
 import { STATUS } from '../../constants';
 import { getImages, PER_PAGE as paginationLimit } from '../../services';
@@ -10,94 +10,71 @@ import { NotFound } from '../ImageGallery/NotFound';
 import { Button } from '../Button';
 import Notification from '../Notification';
 
-export class App extends Component {
-  state = {
-    posts: [],
-    status: STATUS.idle,
-    search: '',
-    page: 1,
-    totalImages: null,
-  };
+export const App = () => {
+  const [posts, setPosts] = useState([]);
+  const [status, setStatus] = useState(STATUS.idle);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalImages, setTotalImages] = useState(null);
+  
+  useEffect(() => {
+    if (search === '') {
+      return;
+    }
+    const fetchPosts = async () => {
+      setStatus(STATUS.loading);
 
-  async componentDidUpdate(_, prevState) {
-    const { search, page, posts } = this.state;
+      try {
+        const data = await getImages({ page, q: search });
 
-    const q = search;
-
-    try {
-      if (prevState.search !== search || prevState.page !== page) {
-        this.setState({ status: STATUS.loading });
-      }
-
-      if (prevState.search !== search){
-        const data = await getImages({ page, q });
-        
         if (!data.totalHits) {
           throw new Error('We have nothing for this search');
         }
 
-        this.setState({
-          posts: [
+        if (page !== 1) {
+          setPosts(prevState => [
+            ...prevState,
             ...data.hits.map(({ id, webformatURL, largeImageURL }) => {
               return { id, webformatURL, largeImageURL };
             }),
-          ],
-          status: STATUS.success,
-          totalImages: data.totalHits,
-          
-        });
-        return;
-      }
-
-      if (prevState.page !== page && page !== 1) {
-        const data = await getImages({ page, q });
-
-        this.setState({
-          posts: [
-            ...prevState.posts,
+          ]);
+          setStatus(STATUS.success);
+          setTotalImages(data.totalHits);
+        } else {
+          setPosts([
             ...data.hits.map(({ id, webformatURL, largeImageURL }) => {
               return { id, webformatURL, largeImageURL };
             }),
-          ],
-          status: STATUS.success,
-          totalImages: data.totalHits,
-        });
+          ]);
 
-        if (
-          data.totalHits === posts.length ||
-          data.hits.length < paginationLimit
-        ) {
-          throw new Error('You loaded all posts');
+          setStatus(STATUS.success);
+          setTotalImages(data.totalHits);
         }
 
-        return;
+        if (data.totalHits === posts.length || data.hits.length < paginationLimit) {
+          throw new Error('You loaded all posts');
+        }
+      } catch (error) {
+        console.log(error);
+        this.setState({ status: STATUS.error });
       }
+    };
+        fetchPosts();
+  }, [page, search]);
 
-    } catch (error) {
-      console.log(error);
-      this.setState({ status: STATUS.error });
-    }
-  }
-
-  handleSubmit = searchValue => {
-    this.setState(prevState => {
-      if (prevState.search === searchValue) {
-        return;
-      }
-      return { search: searchValue, page: 1, posts: [] };
-    });
+    const handleSubmit = searchValue => {
+    setSearch(searchValue);
+    setPage(1);
+    setPosts([]);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMore = () => {
+    setPage(prevState => prevState + 1);
   };
 
-  render() {
-    const { posts, status, totalImages } = this.state;
-    
     return (
       <Wrapper>
-        <Searchbar onSubmit={this.handleSubmit} />
+        <Searchbar onSubmit={handleSubmit} />
 
         {posts.length === 0 && status === STATUS.idle && 
           <Notification>Please Enter search query</Notification>
@@ -108,7 +85,7 @@ export class App extends Component {
               posts={posts}
             />
             {posts.length<totalImages ? (
-              <Button onClick={this.handleLoadMore} />
+              <Button onClick={handleLoadMore} />
             ) : (
               <Notification>The images are end!</Notification>
             )}
@@ -123,4 +100,4 @@ export class App extends Component {
       </Wrapper>
     );
   }
-}
+
